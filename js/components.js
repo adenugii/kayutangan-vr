@@ -79,6 +79,7 @@
       this.hideVrInfo();
       const loc = this.getLocation();
       const view = loc.views[this.viewIdx];
+      this.setStartView(view);
       const my = ++this.token;
       this.loader.classList.remove('hidden');
       this.loader.textContent = 'Memuat panorama…';
@@ -94,6 +95,16 @@
       this.buildHotspots();
       this.el.emit('tour-changed', { locIdx: this.locIdx, viewIdx: this.viewIdx });
       this.preloadNeighbours();
+    },
+
+    // Arahkan pandangan awal: rig diputar sehingga berlaku di mode biasa maupun Cardboard,
+    // sementara hotspot tetap memakai yaw relatif terhadap foto.
+    setStartView(view) {
+      const yaw = view.startYaw !== undefined ? view.startYaw : TOUR.defaultYaw;
+      document.getElementById('rig').setAttribute('rotation', `0 ${-yaw} 0`);
+      const camEl = this.el.camera && this.el.camera.el;
+      const lc = camEl && camEl.components['look-controls'];
+      if (lc && lc.yawObject) { lc.yawObject.rotation.y = 0; lc.pitchObject.rotation.x = 0; } // buang sisa geseran
     },
 
     preload(src, cb) {
@@ -135,13 +146,16 @@
         this.hotspots.appendChild(e);
       };
 
+      // Portal mengikuti arah pandangan awal (startYaw), jadi selalu ada di sekitar pusat layar saat titik dimuat.
+      // Hotspot info memakai yaw relatif terhadap foto (infoYaw) agar menempel pada objeknya.
+      const sy = view.startYaw !== undefined ? view.startYaw : TOUR.defaultYaw;
       add(view.infoYaw, view.infoPitch, { name: 'hotspot-info', value: '' });
-      if (this.locIdx > 0) add(-40, -30, { name: 'portal-nav', value: { action: 'prev', label: 'Sebelum-nya' } });
-      add(40, -30, { name: 'portal-nav', value: { action: 'next', label: last ? 'Kuis' : 'Lanjut' } });
+      if (this.locIdx > 0) add(sy - 40, -30, { name: 'portal-nav', value: { action: 'prev', label: 'Sebelum-nya' } });
+      add(sy + 40, -30, { name: 'portal-nav', value: { action: 'next', label: last ? 'Kuis' : 'Lanjut' } });
       if (loc.views.length > 1) {
-        add(0, -30, { name: 'portal-nav', value: { action: 'angle', label: `Sudut ${((this.viewIdx + 1) % loc.views.length) + 1}` } });
+        add(sy, -30, { name: 'portal-nav', value: { action: 'angle', label: `Sudut ${((this.viewIdx + 1) % loc.views.length) + 1}` } });
       }
-      add(0, -52, { name: 'portal-nav', value: { action: 'exit', label: 'Keluar' } });
+      add(sy, -52, { name: 'portal-nav', value: { action: 'exit', label: 'Keluar' } });
     },
 
     // Panel info 3D untuk mode Cardboard (overlay DOM tidak tampil di layar split)

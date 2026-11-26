@@ -53,6 +53,7 @@ Revisi: "Rumah Namsin" → **Kedai Namsin**; "Pasar Krempyeng & Sungai" dipisah 
 
 ## 5. Coding Conventions for AI Agent
 - Semua data (judul, deskripsi, path panorama/audio, yaw/pitch hotspot, soal kuis) HANYA di `js/tour-data.js`. Menambah sudut/titik = menambah entri di sana.
+- **Pandangan awal** tiap titik/sudut = `TOUR.defaultYaw` (−90° = 90° ke kiri, agar objek utama langsung terlihat). Bisa ditimpa per sudut dengan `startYaw` di entri `views`. Diterapkan dengan memutar `#rig` (bukan panoramanya), jadi sama di mode biasa & Cardboard; geseran pengguna di-reset tiap pindah titik/sudut. Catatan: `infoYaw/infoPitch` relatif terhadap foto dan sudah dikalibrasi agar ikon info menempel pada objek utama saat pandangan awal −90°. Portal 3D (Sebelumnya/Lanjut/Sudut/Keluar) diposisikan relatif terhadap `startYaw` (atau `defaultYaw`) sehingga selalu berada di sekitar pusat layar saat titik dimuat.
 - Hotspot memakai **yaw/pitch** (derajat; yaw 0 = arah pandang awal, positif = kanan; pitch positif = atas). Nilai `infoYaw/infoPitch` saat ini PERKIRAAN. Kalibrasi: buka `index.html?debug=1`, klik titik pada panorama → yaw/pitch muncul di toast & console.
 - Komponen A-Frame lewat `AFRAME.registerComponent`. **Jangan pakai `get` accessor** di definisi komponen (tidak terbaca) — pakai method biasa.
 - Lapisan `#hotspot-layer` mengikuti posisi kamera tiap frame (`tick` di tour-manager) agar sudut hotspot akurat di mode biasa maupun Cardboard.
@@ -64,7 +65,7 @@ Revisi: "Rumah Namsin" → **Kedai Namsin**; "Pasar Krempyeng & Sungai" dipisah 
 **Belum / perlu diputuskan**:
 1. Narasi audio belum ada (`audio: null`); naskah & rekaman perlu dibuat. Narasi Sungai & kecocokan narasi Kedai Namsin.
 2. Kuis soal 4–5 adalah draf baru; ambang gelar (80/50) sementara — P1 tidak menetapkan.
-3. Posisi hotspot masih perkiraan → kalibrasi per sudut pandang.
+3. Posisi hotspot info sudah diselaraskan dengan pandangan awal tetapi masih perkiraan → kalibrasi halus per sudut pandang dengan `?debug=1`.
 4. Kuis dibuka hanya setelah titik terakhir (konflik P1: flow chart menampilkannya sebagai pilihan kapan saja). Di Cardboard, kuis keluar dari mode VR ke layar biasa — jawab kuis di split-screen belum didukung.
 5. Mode Cardboard belum diuji di HP nyata; klaim dukungan WebXR di Safari pada P1 perlu dibuktikan. Hosting harus HTTPS agar sensor gerak berfungsi.
 6. Foto menampilkan tangan/bayangan fotografer di bagian bawah (nadir) — pertimbangkan menutup dengan logo/patch.

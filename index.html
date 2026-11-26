@@ -4,287 +4,113 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Kayutangan 360 - Virtual Tour</title>
+  <link rel="stylesheet" href="css/style.css" />
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body { overflow: hidden; background: #111; color: #fff; }
-    
-    /* Landing & Modal Overlays */
-    .overlay {
-      position: fixed; inset: 0; z-index: 100;
-      background: linear-gradient(135deg, rgba(24,20,18,0.94), rgba(58,42,30,0.92));
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 24px; text-align: center;
-    }
-    .hidden { display: none !important; }
-    h1 { font-size: 2rem; color: #f5c16c; margin-bottom: 8px; }
-    p.subtitle { max-width: 480px; font-size: 0.95rem; line-height: 1.5; color: #e2d8ce; margin-bottom: 20px; }
-    
-    .mode-group { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
-    .btn {
-      padding: 12px 20px; border: none; border-radius: 10px; font-weight: 600;
-      cursor: pointer; font-size: 0.95rem; transition: 0.2s;
-    }
-    .btn-mode { background: #332a24; color: #fff; border: 2px solid #6e5849; }
-    .btn-mode.active { background: #d97706; border-color: #fbbf24; color: #fff; }
-    .btn-primary { background: #16a34a; color: #fff; font-size: 1.05rem; padding: 14px 28px; }
-    .btn-secondary { background: #374151; color: #fff; }
-
-    /* HUD Controls (Normal Mode) */
-    #hud {
-      position: fixed; inset: 0; pointer-events: none; z-index: 50;
-      display: flex; flex-direction: column; justify-content: space-between; padding: 16px;
-    }
-    .hud-top, .hud-bottom { display: flex; justify-content: space-between; align-items: center; pointer-events: auto; gap: 8px; flex-wrap: wrap; }
-    .badge { background: rgba(0,0,0,0.7); padding: 8px 14px; border-radius: 20px; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.2); }
-    
-    /* Info Card & Quiz Box */
-    .card {
-      background: #1f1b18; border: 1px solid #d97706; border-radius: 14px;
-      padding: 20px; max-width: 460px; width: 100%; text-align: left;
-    }
-    .card h2 { color: #fbbf24; font-size: 1.25rem; margin-bottom: 8px; }
-    .card p { font-size: 0.92rem; line-height: 1.5; color: #f3f4f6; margin-bottom: 16px; }
-    .quiz-opt {
-      display: block; width: 100%; text-align: left; padding: 10px 14px;
-      margin-bottom: 8px; background: #2d2622; color: #fff; border: 1px solid #574940; border-radius: 8px; cursor: pointer;
-    }
-    .quiz-opt:hover { background: #443831; }
-    .notice { font-size: 0.78rem; color: #fbbf24; margin-top: 12px; max-width: 420px; }
-  </style>
+  <script src="js/tour-data.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/app.js" defer></script>
 </head>
 <body>
 
   <!-- 1. LANDING PAGE (VR-01, VR-02, VR-03) -->
   <div id="landing-screen" class="overlay">
     <h1>Kayutangan 360</h1>
-    <p class="subtitle">Eksplorasi virtual sejarah, arsitektur kolonial hingga Jengki, dan budaya Kampung Heritage Kayutangan Malang dalam 7 titik interaktif.</p>
-    
+    <p class="subtitle">Eksplorasi virtual sejarah, arsitektur kolonial hingga Jengki, dan budaya Kampung Heritage Kayutangan Malang dalam 8 titik interaktif.</p>
+
     <div class="mode-group">
-      <button id="btn-mode-normal" class="btn btn-mode active" onclick="selectMode('normal')">📱 Mode Layar Biasa</button>
-      <button id="btn-mode-vr" class="btn btn-mode" onclick="selectMode('vr')">🥽 Mode VR Cardboard</button>
+      <button id="btn-mode-normal" class="btn btn-mode active" onclick="selectMode('normal')">Mode Layar Biasa</button>
+      <button id="btn-mode-vr" class="btn btn-mode" onclick="selectMode('vr')">Mode VR Cardboard</button>
     </div>
 
     <button class="btn btn-primary" onclick="startTour()">Mulai Tour</button>
     <p class="notice">*Catatan: Mode VR Cardboard berjalan optimal di Android Chrome. Pengguna iOS Safari disarankan memakai Mode Layar Biasa jika sensor giroskop dibatasi browser.</p>
   </div>
 
-  <!-- 2. HUD OVERLAY (VR-08, VR-09, VR-10) -->
+  <div id="loader" class="hidden">Memuat panorama…</div>
+  <div id="toast" class="hidden"></div>
+
+  <!-- 2. HUD (VR-08, VR-10) — hanya Mode Layar Biasa -->
   <div id="hud" class="hidden">
     <div class="hud-top">
-      <span id="location-badge" class="badge">1/7: Gerbang Kampung</span>
-      <button class="btn btn-secondary" style="padding:8px 12px;font-size:0.8rem;" onclick="exitTour()">Keluar</button>
+      <div class="left">
+        <span id="location-badge" class="badge">1/8: Gerbang Kampung</span>
+        <span id="view-badge" class="badge hidden">Sudut 1/2</span>
+      </div>
+      <button class="btn btn-secondary" style="padding:8px 12px;font-size:0.8rem;min-height:44px;" onclick="exitTour()">Keluar</button>
     </div>
     <div class="hud-bottom">
-      <button class="btn btn-secondary" onclick="prevLocation()">⬅ Sebelumnya</button>
-      <button class="btn btn-mode active" onclick="openInfoModal()">ℹ️ Info & Audio</button>
-      <button id="btn-next" class="btn btn-secondary" onclick="nextLocation()">Berikutnya ➡</button>
+      <button id="btn-prev" class="btn btn-secondary" onclick="tm().prevLocation()">&larr; Sebelumnya</button>
+      <button class="btn btn-secondary" onclick="openMenu()">Menu Titik</button>
+      <button id="btn-angle" class="btn btn-secondary hidden" onclick="tm().nextView()">Ganti Sudut</button>
+      <button class="btn btn-mode active" onclick="openInfo()">Info &amp; Audio</button>
+      <button id="btn-next" class="btn btn-secondary" onclick="tm().nextLocation()">Berikutnya &rarr;</button>
     </div>
   </div>
 
-  <!-- 3. INFO & AUDIO MODAL (VR-07) -->
+  <!-- 3. MENU LOMPAT TITIK (VR-08) -->
+  <div id="menu-modal" class="overlay hidden">
+    <div class="card">
+      <h2>Pilih Titik Lokasi</h2>
+      <div id="menu-list"></div>
+      <div class="actions"><button class="btn btn-secondary" onclick="closeMenu()">Tutup</button></div>
+    </div>
+  </div>
+
+  <!-- 4. INFO & AUDIO (VR-07) -->
   <div id="info-modal" class="overlay hidden">
     <div class="card">
       <h2 id="info-title">Judul Lokasi</h2>
       <p id="info-desc">Deskripsi sejarah...</p>
-      <div style="display:flex; gap:10px; justify-content:flex-end;">
-        <button id="btn-audio" class="btn btn-mode active" onclick="toggleAudio()">🔊 Putar Narasi (Simulasi)</button>
-        <button class="btn btn-secondary" onclick="closeInfoModal()">Tutup</button>
+      <div class="actions">
+        <button id="btn-audio" class="btn btn-mode active" onclick="toggleAudio()">Putar Narasi</button>
+        <button class="btn btn-secondary" onclick="closeInfo()">Tutup</button>
       </div>
     </div>
   </div>
 
-  <!-- 4. QUIZ & FINAL SCORE MODAL (VR-09) -->
+  <!-- 5. KUIS & SKOR (VR-09) -->
   <div id="quiz-modal" class="overlay hidden">
     <div class="card" id="quiz-container">
-      <h2 id="quiz-progress">Kuis Evaluasi (Soal 1/3)</h2>
+      <h2 id="quiz-progress">Kuis Evaluasi</h2>
       <p id="quiz-question">Pertanyaan...</p>
       <div id="quiz-options"></div>
     </div>
     <div class="card hidden" id="score-container" style="text-align:center;">
       <h2>Hasil Akhir Tour</h2>
       <p id="score-text" style="font-size:1.3rem; font-weight:bold; color:#fbbf24;"></p>
-      <p id="score-title">Gelar: Penjelajah Heritage</p>
-      <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
+      <p id="score-title"></p>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="restartTour()">Ulangi Tour</button>
         <button class="btn btn-secondary" onclick="exitTour()">Menu Utama</button>
       </div>
     </div>
   </div>
 
-  <!-- 5. A-FRAME 360 SCENE (VR-04, VR-05, VR-06) -->
-  <a-scene id="vr-scene" vr-mode-ui="enabled: false">
-    <!-- Sky Placeholder (Ganti src dengan foto 360 equirectangular asli nanti) -->
-    <a-sky id="sky-bg" color="#2b4c7e"></a-sky>
-    
-    <!-- Grid helper agar rotasi 360 terasa saat pakai warna solid placeholder -->
-    <a-entity id="placeholder-env">
-      <a-text id="vr-banner" value="TITIK 1: GERBANG KAMPUNG\n(Placeholder 360 Panorama)" position="0 2.2 -4" align="center" width="6" color="#fbbf24"></a-text>
-      <!-- Hotspot 3D interaktif (bisa diklik atau di-gaze di Cardboard) -->
-      <a-sphere id="hotspot-3d" position="1.5 1.5 -3.5" radius="0.35" color="#f59e0b" class="clickable"
-                animation="property: scale; to: 1.15 1.15 1.15; dir: alternate; dur: 800; loop: true"
-                onclick="openInfoModal()">
-        <a-text value="i" align="center" position="0 0 0.36" width="6" color="#000"></a-text>
-      </a-sphere>
-      <!-- Portal Next 3D -->
-      <a-box id="portal-next-3d" position="-1.5 1.2 -3.5" depth="0.2" height="0.6" width="0.6" color="#10b981" class="clickable"
-             onclick="nextLocation()">
-        <a-text value="NEXT" align="center" position="0 0 0.12" width="4" color="#fff"></a-text>
-      </a-box>
+  <!-- 6. ADEGAN A-FRAME (VR-04, VR-05, VR-06) -->
+  <a-scene id="vr-scene" tour-manager vr-mode-ui="enabled: false"
+           cursor="rayOrigin: mouse" raycaster="objects: .clickable">
+    <a-sky id="sky-bg" color="#ffffff"></a-sky>
+
+    <!-- Hotspot & portal: lapisan ini mengikuti posisi kamera (lihat tick di components.js) -->
+    <a-entity id="hotspot-layer" position="0 1.6 0">
+      <a-entity id="hotspots"></a-entity>
+      <!-- Panel info 3D untuk Mode Cardboard -->
+      <a-entity id="vr-info-panel" visible="false"
+                geometry="primitive: plane; width: 3.6; height: 2.4"
+                material="color: #1f1b18; opacity: 0.95; shader: flat">
+        <a-entity class="vr-info-text" position="0 0 0.01"
+                  text="value: ; align: center; width: 3.2; color: #fbbf24; wrapCount: 34"></a-entity>
+      </a-entity>
     </a-entity>
 
-    <!-- Camera + Gaze Cursor for Cardboard -->
-    <a-entity id="rig" position="0 1.6 0">
+    <!-- Kamera + kursor tatap (gaze) untuk Cardboard -->
+    <a-entity id="rig" position="0 0 0">
       <a-camera look-controls="magicWindowTrackingEnabled: true">
-        <a-cursor id="gaze-cursor" fuse="true" fuse-timeout="1500" raycaster="objects: .clickable"
+        <a-cursor id="gaze-cursor" fuse="true" fuse-timeout="1500" raycaster="objects: .clickable; enabled: false"
                   geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025"
                   material="color: #fbbf24; shader: flat" visible="false"></a-cursor>
       </a-camera>
     </a-entity>
   </a-scene>
-
-  <script>
-    // Data 7 Titik Kayutangan (Siap diisi path gambar 360 & audio MP3)
-    const locations = [
-      { id: 1, name: "Gerbang Kampung", color: "#1e3a5f", desc: "Akses utama dari Jl. Basuki Rahmat. Kampung tua tersembunyi di balik pertokoan kolonial yang diresmikan sebagai kampung wisata sejak 2018." },
-      { id: 2, name: "Rumah 1870", color: "#4a3525", desc: "Rumah tertua yang tercatat di Kayutangan, menampilkan ciri khas arsitektur kolonial awal gaya Batavia." },
-      { id: 3, name: "Rumah Namsin", color: "#3b4d3b", desc: "Memiliki ornamen mahkota pada bagian atas bangunan sebagai simbol status sosial pemiliknya sebagai saudagar sukses." },
-      { id: 4, name: "Rumah Jengki", color: "#5c3a4d", desc: "Dibangun pada era 1960-an dengan atap miring asimetris khas gaya Jengki pasca-kemerdekaan, kontras dengan rumah kolonial." },
-      { id: 5, name: "Rumah & Warung Mbah Ndut", color: "#4f4628", desc: "Dibangun tahun 1923, terkait sejarah perjuangan keluarga Mardikyah. Kata 'Hamur' adalah bahasa walikan Malang yang berarti Rumah." },
-      { id: 6, name: "Makam Mbah Honggo", color: "#263836", desc: "Makam Pangeran Honggokusumo (sekitar 1830), tokoh penyebar agama Islam di Kayutangan pasca Perang Diponegoro." },
-      { id: 7, name: "Pasar Krempyeng & Sungai", color: "#2d3e50", desc: "Pusat ekonomi tradisional warga di tengah kampung yang dibelah aliran sungai serta menyimpan koleksi barang antik." }
-    ];
-
-    const quizData = [
-      { q: "Apa arti kata 'Hamur' pada Warung Hamur Mbah Ndut dalam bahasa walikan Malang?", opts: ["Pasar", "Rumah", "Sungai"], ans: 1 },
-      { q: "Ornamen mahkota pada Rumah Namsin melambangkan status pemiliknya sebagai...", opts: ["Bangsawan Belanda", "Saudagar", "Seniman"], ans: 1 },
-      { q: "Gaya arsitektur pasca-kemerdekaan tahun 1960-an di Kayutangan disebut gaya...", opts: ["Art Deco", "Batavia", "Jengki"], ans: 2 }
-    ];
-
-    let currentIdx = 0;
-    let selectedMode = 'normal';
-    let quizIdx = 0;
-    let score = 0;
-    let isAudioPlaying = false;
-
-    function selectMode(mode) {
-      selectedMode = mode;
-      document.getElementById('btn-mode-normal').classList.toggle('active', mode === 'normal');
-      document.getElementById('btn-mode-vr').classList.toggle('active', mode === 'vr');
-    }
-
-    function startTour() {
-      document.getElementById('landing-screen').classList.add('hidden');
-      const scene = document.getElementById('vr-scene');
-      const cursor = document.getElementById('gaze-cursor');
-
-      if (selectedMode === 'vr') {
-        scene.setAttribute('vr-mode-ui', 'enabled: true');
-        cursor.setAttribute('visible', 'true');
-        document.getElementById('hud').classList.remove('hidden');
-        if (scene.enterVR) scene.enterVR();
-      } else {
-        scene.setAttribute('vr-mode-ui', 'enabled: false');
-        cursor.setAttribute('visible', 'false');
-        document.getElementById('hud').classList.remove('hidden');
-      }
-      loadLocation(0);
-    }
-
-    function loadLocation(idx) {
-      currentIdx = idx;
-      const loc = locations[idx];
-      document.getElementById('location-badge').innerText = `${loc.id}/7: ${loc.name}`;
-      document.getElementById('sky-bg').setAttribute('color', loc.color);
-      document.getElementById('vr-banner').setAttribute('value', `TITIK ${loc.id}: ${loc.name.toUpperCase()}\n(Placeholder 360 Panorama)`);
-      document.getElementById('btn-next').innerText = (idx === locations.length - 1) ? "Selesai & Kuis 📝" : "Berikutnya ➡";
-      stopAudio();
-    }
-
-    function nextLocation() {
-      if (currentIdx < locations.length - 1) {
-        loadLocation(currentIdx + 1);
-      } else {
-        openQuiz();
-      }
-    }
-
-    function prevLocation() {
-      if (currentIdx > 0) loadLocation(currentIdx - 1);
-    }
-
-    function openInfoModal() {
-      const loc = locations[currentIdx];
-      document.getElementById('info-title').innerText = `${loc.id}. ${loc.name}`;
-      document.getElementById('info-desc').innerText = loc.desc;
-      document.getElementById('info-modal').classList.remove('hidden');
-    }
-
-    function closeInfoModal() {
-      document.getElementById('info-modal').classList.add('hidden');
-      stopAudio();
-    }
-
-    function toggleAudio() {
-      isAudioPlaying = !isAudioPlaying;
-      document.getElementById('btn-audio').innerText = isAudioPlaying ? "⏸ Hentikan Narasi" : "🔊 Putar Narasi (Simulasi)";
-    }
-
-    function stopAudio() {
-      isAudioPlaying = false;
-      document.getElementById('btn-audio').innerText = "🔊 Putar Narasi (Simulasi)";
-    }
-
-    function openQuiz() {
-      quizIdx = 0; score = 0;
-      document.getElementById('quiz-container').classList.remove('hidden');
-      document.getElementById('score-container').classList.add('hidden');
-      document.getElementById('quiz-modal').classList.remove('hidden');
-      renderQuizQuestion();
-    }
-
-    function renderQuizQuestion() {
-      const item = quizData[quizIdx];
-      document.getElementById('quiz-progress').innerText = `Kuis Evaluasi (Soal ${quizIdx + 1}/${quizData.length})`;
-      document.getElementById('quiz-question').innerText = item.q;
-      const optDiv = document.getElementById('quiz-options');
-      optDiv.innerHTML = '';
-      item.opts.forEach((opt, i) => {
-        const btn = document.createElement('button');
-        btn.className = 'quiz-opt';
-        btn.innerText = opt;
-        btn.onclick = () => {
-          if (i === item.ans) score += 100;
-          quizIdx++;
-          if (quizIdx < quizData.length) renderQuizQuestion();
-          else showFinalScore();
-        };
-        optDiv.appendChild(btn);
-      });
-    }
-
-    function showFinalScore() {
-      const finalPct = Math.round(score / quizData.length);
-      document.getElementById('quiz-container').classList.add('hidden');
-      document.getElementById('score-container').classList.remove('hidden');
-      document.getElementById('score-text').innerText = `Skor Anda: ${finalPct} / 100`;
-      document.getElementById('score-title').innerText = finalPct >= 70 ? "Gelar: Pemandu Kayutangan 🏆" : "Gelar: Penjelajah Heritage 🧭";
-    }
-
-    function restartTour() {
-      document.getElementById('quiz-modal').classList.add('hidden');
-      loadLocation(0);
-    }
-
-    function exitTour() {
-      stopAudio();
-      document.getElementById('info-modal').classList.add('hidden');
-      document.getElementById('quiz-modal').classList.add('hidden');
-      document.getElementById('hud').classList.add('hidden');
-      document.getElementById('landing-screen').classList.remove('hidden');
-      const scene = document.getElementById('vr-scene');
-      if (scene.exitVR) scene.exitVR();
-    }
-  </script>
 </body>
 </html>
